@@ -1,0 +1,20 @@
+spring:
+  application:
+    name: ai-devops-agent-platform
+  datasource:
+    # 本地默认使用内存库；部署时由环境变量连接既有 MySQL IAM 表。
+    url: ${APP_DB_URL:jdbc:h2:mem:iam;MODE=MySQL;DB_CLOSE_DELAY=-1}
+    username: ${APP_DB_USERNAME:sa}
+    password: ${APP_DB_PASSWORD:}
+    hikari:
+      # 生产 MySQL 可通过环境变量显式设置 UTC 会话时区。
+      connection-init-sql: ${APP_DB_CONNECTION_INIT_SQL:}
+
+app:
+  iam:
+    schema-validation: ${APP_IAM_SCHEMA_VALIDATE:false}
+
+mybatis:
+  configuration:
+    map-underscore-to-camel-case: true
+  type-handlers-package: devops.iam.persistence.typehandler
