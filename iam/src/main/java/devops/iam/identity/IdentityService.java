@@ -44,22 +44,21 @@ public class IdentityService {
 
     @Transactional
     public LoginView login(String login, String password, String clientSummary) {
-        var user = dao.findUser(login).orElseThrow(() -> bad("LOGIN_FAILED", "登录失败"));
+        var user = authenticateCredentials(login, password);
         Instant now = Instant.now();
-        var lock = dao.findLock(user.id());
-        if (lock.lockedUntil() != null && lock.lockedUntil().isAfter(now)) {
-            throw bad("LOGIN_FAILED", "登录失败");
-        }
-        if (!encoder.matches(password, user.passwordHash())) {
-            int count = lock.failedCount() + 1;
-            dao.recordFailure(user.id(), count, now, count >= 5 ? now.plus(Duration.ofMinutes(15)) : null);
-            throw bad("LOGIN_FAILED", "登录失败");
-        }
-        dao.clearFailures(user.id());
         String token = newToken();
-        String summary = clientSummary == null ? null : clientSummary.substring(0, Math.min(255, clientSummary.length()));
-        dao.createSession(UUID.randomUUID().toString(), user.id(), hash(token), now, now.plus(SESSION_TTL), summary);
+        Instant expiresAt = createSession(user, hash(token), now, clientSummary);
         return new LoginView(token, SESSION_TTL.toSeconds(), new UserView(user.id(), user.username(), user.email()));
+    }
+
+    /**
+     * 浏览器登录链接只提交 MCP 预生成令牌的哈希；这样 IAM 仍只持久化哈希，而原始令牌不经过浏览器。
+     */
+    @Transactional
+    public SessionLoginView loginWithSessionTokenHash(String login, String password, String sessionTokenHash, String clientSummary) {
+        var user = authenticateCredentials(login, password);
+        Instant expiresAt = createSession(user, sessionTokenHash, Instant.now(), clientSummary);
+        return new SessionLoginView(new UserView(user.id(), user.username(), user.email()), expiresAt);
     }
 
     public SessionPrincipal authenticate(String token) {
@@ -71,6 +70,11 @@ public class IdentityService {
         var user = dao.findUserById(session.userId())
                 .orElseThrow(() -> bad("AUTHENTICATION_REQUIRED", "需要登录"));
         return new SessionPrincipal(session.id(), new UserView(user.id(), user.username(), user.email()));
+    }
+
+    /** 只向注册链接完成状态提供已存在用户的安全摘要，不暴露密码哈希或会话信息。 */
+    public java.util.Optional<UserView> findUserSummary(String userId) {
+        return dao.findUserById(userId).map(user -> new UserView(user.id(), user.username(), user.email()));
     }
 
     @Transactional
@@ -98,6 +102,29 @@ public class IdentityService {
         }
     }
 
+    private IdentityDao.UserRow authenticateCredentials(String login, String password) {
+        var user = dao.findUser(login).orElseThrow(() -> bad("LOGIN_FAILED", "登录失败"));
+        Instant now = Instant.now();
+        var lock = dao.findLock(user.id());
+        if (lock.lockedUntil() != null && lock.lockedUntil().isAfter(now)) {
+            throw bad("LOGIN_FAILED", "登录失败");
+        }
+        if (!encoder.matches(password, user.passwordHash())) {
+            int count = lock.failedCount() + 1;
+            dao.recordFailure(user.id(), count, now, count >= 5 ? now.plus(Duration.ofMinutes(15)) : null);
+            throw bad("LOGIN_FAILED", "登录失败");
+        }
+        dao.clearFailures(user.id());
+        return user;
+    }
+
+    private Instant createSession(IdentityDao.UserRow user, String tokenHash, Instant issuedAt, String clientSummary) {
+        Instant expiresAt = issuedAt.plus(SESSION_TTL);
+        String summary = clientSummary == null ? null : clientSummary.substring(0, Math.min(255, clientSummary.length()));
+        dao.createSession(UUID.randomUUID().toString(), user.id(), tokenHash, issuedAt, expiresAt, summary);
+        return expiresAt;
+    }
+
     private String newToken() {
         byte[] bytes = new byte[32];
         random.nextBytes(bytes);
@@ -110,5 +137,6 @@ public class IdentityService {
 
     public record UserView(String id, String username, String email) { }
     public record LoginView(String token, long expiresInSeconds, UserView user) { }
+    public record SessionLoginView(UserView user, Instant expiresAt) { }
     public record SessionPrincipal(String sessionId, UserView user) { }
 }

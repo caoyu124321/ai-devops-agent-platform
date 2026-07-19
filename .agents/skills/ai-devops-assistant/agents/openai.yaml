@@ -1,0 +1,4 @@
+interface:
+  display_name: "AI DevOps 助手"
+  short_description: "识别 AI DevOps 意图并调用平台 MCP 工具"
+  default_prompt: "使用 $ai-devops-assistant 查询 AI DevOps 当前能力并帮助我开始操作。"

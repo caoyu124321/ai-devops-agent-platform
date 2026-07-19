@@ -5,6 +5,8 @@ public enum IamTable {
     USERS("iam_users"),
     SESSIONS("iam_sessions"),
     LOGIN_LOCKS("iam_login_locks"),
+    REGISTRATION_LINKS("iam_registration_links"),
+    LOGIN_LINKS("iam_login_links"),
     TENANTS("iam_tenants"),
     TENANT_MEMBERS("iam_tenant_members"),
     INVITATIONS("iam_invitations"),

@@ -5,6 +5,14 @@
 | 接口 | 调用方 | 目的 | 主要输入 | 主要错误 |
 | --- | --- | --- | --- | --- |
 | `POST /auth/register` | 匿名用户 | 注册用户 | 用户名、邮箱、密码 | 标识冲突、密码不合规 |
+| `POST /auth/registration-links` | 本机 MCP | 创建短时一次性注册链接 | 无 | 服务不可达 |
+| `GET /auth/registration-links/{id}` | 持有注册链接的 MCP | 查询注册链接完成状态 | 链接令牌 | 链接不可用 |
+| `GET /auth/registration-links/{id}/form` | 持有注册链接的浏览器 | 显示注册表单 | 链接令牌 | 链接不可用 |
+| `POST /auth/registration-links/{id}/complete` | 持有注册链接的浏览器 | 直接提交注册信息 | 链接令牌、用户名、邮箱、密码 | 链接不可用、标识冲突、密码不合规 |
+| `POST /auth/login-links` | 本机 MCP | 以 MCP 会话令牌哈希创建短时登录链接 | 会话令牌哈希 | 链接创建失败 |
+| `GET /auth/login-links/{id}` | 持有登录链接的 MCP | 查询登录链接与会话交接状态 | 链接令牌 | 链接不可用 |
+| `GET /auth/login-links/{id}/form` | 持有登录链接的浏览器 | 显示登录表单 | 链接令牌 | 链接不可用 |
+| `POST /auth/login-links/{id}/complete` | 持有登录链接的浏览器 | 校验登录信息并创建会话 | 链接令牌、登录标识、密码 | 链接不可用、`LOGIN_FAILED` |
 | `POST /auth/login` | 匿名用户 | 用户名或邮箱登录，创建 24 小时会话 | 登录标识、密码 | `LOGIN_FAILED` |
 | `POST /auth/logout` | 已登录用户 | 撤销当前会话 | 无 | 未认证 |
 | `POST /auth/password/change` | 已登录用户 | 校验旧密码后改密并撤销全量会话 | 旧密码、新密码 | 旧密码错误、密码不合规 |

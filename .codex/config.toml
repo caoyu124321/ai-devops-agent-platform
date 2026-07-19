@@ -1,0 +1,7 @@
+[mcp_servers.ai_devops]
+command = "C:\\Users\\Administrator\\.jdks\\openjdk-26.0.1\\bin\\java.exe"
+args = ["--enable-native-access=ALL-UNNAMED", "-jar", "D:\\workspace\\ai-devops-agent-platform\\mcp\\target\\mcp-0.0.1-SNAPSHOT.jar"]
+env = { AI_DEVOPS_BASE_URL = "http://127.0.0.1:8080" }
+startup_timeout_sec = 15
+tool_timeout_sec = 30
+enabled_tools = ["get_ai_devops_capabilities", "register_ai_devops", "get_ai_devops_registration_status", "login_ai_devops", "get_ai_devops_login_status", "get_current_ai_devops_user", "logout_ai_devops"]
