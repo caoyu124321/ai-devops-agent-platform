@@ -1,0 +1,7 @@
+[mcp_servers.ai_devops]
+# 已迁移至当前 Windows 用户的全局 Codex 配置，保留此备份以便恢复项目级接入。
+url = "http://127.0.0.1:8080/mcp"
+auth = "oauth"
+startup_timeout_sec = 15
+tool_timeout_sec = 30
+enabled_tools = ["get_ai_devops_capabilities", "register_ai_devops", "get_current_ai_devops_user", "logout_ai_devops"]
