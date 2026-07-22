@@ -13,6 +13,18 @@ spring:
 app:
   iam:
     schema-validation: ${APP_IAM_SCHEMA_VALIDATE:false}
+  oauth:
+    # 本地使用终版 HTTP 协议；生产环境必须通过环境变量配置 HTTPS 外部地址。
+    issuer: ${APP_OAUTH_ISSUER:http://127.0.0.1:8080}
+    allow-loopback-http: ${APP_OAUTH_ALLOW_LOOPBACK_HTTP:true}
+    auto-activate-loopback-clients: ${APP_OAUTH_AUTO_ACTIVATE_LOOPBACK_CLIENTS:true}
+    client-registration-hourly-limit: ${APP_OAUTH_CLIENT_REGISTRATION_HOURLY_LIMIT:10}
+    # 对外开放时，兼容 OAuth + PKCE 的未知公共客户端可直接进入授权流程；仍可按 client_id 显式停用。
+    unknown-client-default-status: ${APP_OAUTH_UNKNOWN_CLIENT_DEFAULT_STATUS:ACTIVE}
+    # 如需按 client_id 覆盖状态，只通过环境变量 APP_OAUTH_CLIENT_STATUS_OVERRIDES.<client-id>=ACTIVE 配置；
+    # 不在 YAML 中声明空 Map，避免 Spring Boot 将空对象绑定为空字符串。
+    signing-private-key: ${APP_OAUTH_SIGNING_PRIVATE_KEY:}
+    signing-public-key: ${APP_OAUTH_SIGNING_PUBLIC_KEY:}
 
 mybatis:
   configuration:

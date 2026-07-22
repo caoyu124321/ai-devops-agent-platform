@@ -72,6 +72,13 @@ public class IdentityService {
         return new SessionPrincipal(session.id(), new UserView(user.id(), user.username(), user.email()));
     }
 
+    /** OAuth 浏览器授权页复用既有登录锁定和密码校验规则，但不创建 REST 登录会话。 */
+    @Transactional
+    public UserView authenticateForOAuth(String login, String password) {
+        var user = authenticateCredentials(login, password);
+        return new UserView(user.id(), user.username(), user.email());
+    }
+
     /** 只向注册链接完成状态提供已存在用户的安全摘要，不暴露密码哈希或会话信息。 */
     public java.util.Optional<UserView> findUserSummary(String userId) {
         return dao.findUserById(userId).map(user -> new UserView(user.id(), user.username(), user.email()));

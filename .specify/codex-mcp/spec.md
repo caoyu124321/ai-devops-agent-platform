@@ -1,171 +1,132 @@
-# Codex 本地登录与 MCP 接入规格
+# 远程 AI DevOps MCP 接入规格
 
-**修订版本**：0.6
-**状态**：需求已确认，待技术设计  
-**关联模块**：IAM、未来流水线模块
+**修订版本**：1.1
+**状态**：需求与技术设计已确认，待实施
+**关联模块**：IAM OAuth/OIDC 扩展、MCP 接入层、未来流水线模块
 
 ## 目标
 
-让用户在 Codex 中说出“登录 ai-devops”后，能够通过一次性本机浏览器链接完成 AI DevOps 平台登录。成功后，Codex 可在后续 MCP 工具调用中以该用户身份访问平台后端。
+将 AI DevOps MCP Server 以公网可部署的 Streamable HTTP 服务提供给 Codex 及其他兼容 Agent。用户通过 IAM 提供的 OAuth/OIDC 登录页完成认证；MCP Server 仅接收短期访问令牌，并由 IAM 继续进行资源授权。
+
+## 已确认的产品决策
+
+| 决策 | 结论 |
+| --- | --- |
+| 身份提供方 | 在现有 IAM 上扩展 OAuth 2.0 与 OpenID Connect 提供方能力，不引入外部 IdP。 |
+| 服务对象 | 面向外部租户开放；允许匿名注册平台账号并由用户自行创建租户。 |
+| Agent 兼容性 | 面向支持 MCP Streamable HTTP、OAuth 授权码流程与 PKCE 的 Agent；不限定为 Codex。 |
+| 客户端接入 | 使用动态客户端注册，实施限流与启用状态控制；不向公共客户端分发共享 `client_secret`。 |
+| 邀请 | 保留既有租户邀请、接受、拒绝、撤销及七天到期规则。 |
+| Refresh Token | 最长 30 天绝对有效；连续 7 天未使用失效；每次使用后轮换；检测到已轮换 Token 被重用时撤销整条授权链。 |
+| 本地验证 | 使用与生产一致的 Streamable HTTP 与 OAuth/OIDC 协议；仅开发环境允许绑定 `127.0.0.1` 并使用 HTTP。 |
+| Codex OAuth 不可用时的本机回退 | 仅开发环境允许启用旧版 stdio 一次性浏览器登录适配器；它使用当前 Windows 用户凭据管理器保存会话，且与远程 OAuth 连接二选一。 |
 
 ## 范围
 
-- 提供仅在本机运行的 MCP Server，通过标准输入输出（stdio）与 Codex 连接。
-- MCP Server 调用本机平台 REST API，默认地址为 `http://127.0.0.1:8080`。
-- 支持登录、登出、读取当前登录用户三个 MCP 工具。
-- 使用一次性本机浏览器登录链接收集用户名（或邮箱）和密码。
-- 仅在 Windows 凭据管理器中保存后端签发的不透明 Token；不保存密码。
-- 后续工具由 MCP Server 在服务端自动附加 Bearer Token，不向 Codex、工具结果、日志或文件返回 Token 原文。
+- IAM 作为 OAuth 2.0 Authorization Server 与 OpenID Provider，提供发现、授权、令牌、撤销、令牌自省与用户信息能力。
+- 提供符合 MCP Streamable HTTP 的远程 MCP 端点。
+- 支持授权码流程与 PKCE（仅 `S256`）。
+- 支持匿名能力发现与安全注册链接；认证后的 MCP 工具使用 OAuth Access Token。
+- 支持动态客户端注册、客户端启用状态、浏览器授权与用户拒绝授权。
+- 将现有本地 stdio MCP 与 Windows 凭据管理器实现迁移出正式运行路径。
+- 当 Codex 未提供远程 MCP OAuth 授权入口时，提供仅绑定本机的 stdio 一次性浏览器登录回退适配器。
 
 ## 非范围
 
-- 不实现 OAuth、刷新 Token、远程 MCP Server 或多平台凭据存储。
-- 不将现有 Spring Boot REST 服务替换为 MCP 协议服务。
-- 不实现流水线查询、运行、部署或其他业务工具；它们在对应模块完成后再接入。
-- 不实现 Codex 插件。登录和注册均使用一次性本机浏览器链接。
+- 不支持隐式流程、资源所有者密码流程或在聊天/工具参数中收集密码。
+- MVP 不支持客户端凭据流程、服务账号、设备授权流程、令牌交换、DPoP 或 mTLS 发送方约束。
+- 不设计流水线、部署、项目、产物等业务工具的具体接口；后续只复用本认证接入与 IAM 授权入口。
+- 不要求 Agent 保存平台密码；OAuth 客户端如何保护自身 Refresh Token 由其安全凭据机制负责。
+- 当前不新增审计模块或审计持久化要求。
+- 不允许在同一 Codex 配置中同时启用远程 OAuth MCP 与本机 stdio 回退连接。
 
 ## 用户故事
 
-### US-MCP-01 在 Codex 中登录平台
+### US-MCP-01 使用任意兼容 Agent 登录
 
-作为 Codex 用户，我希望请求登录 AI DevOps 平台后取得安全登录链接，以便在浏览器中输入密码并让后续工具以我的身份执行操作。
+作为外部租户用户，我希望在支持该协议的 Agent 中连接 AI DevOps MCP 并在浏览器完成登录，以便无需向 Agent 或 MCP 工具提供密码。
 
-**前置条件**：本机 AI DevOps 服务可访问，用户已在平台完成注册。
-
-**主流程**：
-
-1. 用户在 Codex 中请求登录 AI DevOps 平台。
-2. Codex 调用无敏感参数的 `login_ai_devops` 工具。
-3. MCP Server 生成会话令牌并只向平台提交令牌哈希，平台返回一次性本机登录链接。
-4. 用户在浏览器页面向平台提交登录标识和密码。
-5. 登录完成后，Codex 调用登录状态工具，MCP Server 将内存中的会话令牌写入 Windows 凭据管理器。
-
-**异常流程**：
-
-- 登录失败、服务不可达、链接过期时，不写入或覆盖已有有效 Token。
-- 工具与页面不应显示平台会话 Token、密码或密码哈希。
-
-**验收标准**：
-
-- AS-MCP-01.1：登录工具返回的普通输入 Schema 不含登录标识或密码，且返回本机登录链接。
-- AS-MCP-01.2：链接完成并查询状态后，Windows 凭据管理器存在对应 Token，且密码不被保存。
-- AS-MCP-01.3：工具结果和 MCP 日志不含平台会话 Token 或密码原文。
-
-### US-MCP-02 复用已登录身份
-
-作为已登录用户，我希望 Codex 后续调用平台工具时自动携带有效身份，以便无需重复登录。
+**前置条件**：Agent 已配置 MCP 端点，且支持 OAuth 授权码流程与 PKCE；其客户端已启用。
 
 **主流程**：
 
-1. MCP 工具从 Windows 凭据管理器读取 Token。
-2. MCP Server 在调用平台受保护 API 时附加 `Authorization: Bearer <token>`。
-3. 工具返回经后端授权后的业务结果。
+1. Agent 发现 MCP 与 OAuth 元数据，并生成 PKCE 校验参数。
+2. Agent 打开 IAM 授权页；用户注册（如尚无账号）、登录并同意本次授权。
+3. IAM 向预先登记且严格匹配的回调地址返回授权码。
+4. Agent 使用授权码与 PKCE 校验值换取短期 Access Token；需要长期登录时同时取得 Refresh Token。
+5. Agent 携带 Access Token 调用 MCP；MCP 将认证主体交给 IAM 统一授权。
 
-**异常流程**：
-
-- 未找到 Token 时，工具返回“需要登录”，不调用受保护 API。
-- 后端返回 401 时，MCP Server 删除本地 Token，并返回“登录已失效，需要重新登录”。
-- 后端返回 403 或不可见资源时，保留 Token，仅返回后端的安全拒绝结果。
+**异常流程**：用户拒绝授权、客户端未启用、回调地址不匹配、PKCE 校验失败、授权码失效或重复使用时，均不得签发 Token，也不得泄露用户密码或令牌。
 
 **验收标准**：
 
-- AS-MCP-02.1：成功登录后，读取当前用户工具可返回与 `GET /api/v1/me` 一致的安全用户摘要。
-- AS-MCP-02.2：Token 失效后不会继续被用于新的工具调用。
-- AS-MCP-02.3：Token 原文不会出现在任何工具输入、工具输出或日志中。
+- AS-MCP-01.1：MCP 工具 Schema 与聊天消息均不包含用户名、密码或 Token 字段。
+- AS-MCP-01.2：公共客户端不需要且不能使用共享 `client_secret`。
+- AS-MCP-01.3：未通过 OAuth 认证的调用不能访问需要登录的 MCP 工具。
 
-### US-MCP-03 登出平台
+### US-MCP-02 安全地保持 Agent 登录
 
-作为已登录用户，我希望在 Codex 中登出 AI DevOps 平台，以便撤销本机当前会话。
+作为已授权用户，我希望 Agent 在短期访问令牌到期后安全续期，以便在合理期限内无需反复登录。
 
 **主流程**：
 
-1. Codex 调用 `logout_ai_devops`。
-2. MCP Server 使用保存的 Token 调用 `POST /api/v1/auth/logout`。
-3. MCP Server 无论后端会话是否已失效，均删除 Windows 凭据管理器中的本地 Token。
-4. 工具返回已登出。
+1. Access Token 在 15 分钟内用于访问目标 MCP 资源。
+2. Access Token 到期后，Agent 使用当前 Refresh Token 请求续期。
+3. IAM 签发新的 Access Token 与新的 Refresh Token，并立即使旧 Refresh Token 失效。
+4. 授权链达到 30 天绝对有效期或 Refresh Token 连续 7 天未使用后，用户需重新浏览器登录。
+
+**异常流程**：已失效或已使用的 Refresh Token 被再次提交时，IAM 撤销该授权链的全部 Refresh Token；登出、修改密码时撤销相关授权链。
 
 **验收标准**：
 
-- AS-MCP-03.1：登出后，后续受保护工具必须要求重新登录。
-- AS-MCP-03.2：重复登出按成功处理。
+- AS-MCP-02.1：同一 Refresh Token 不能成功兑换两次。
+- AS-MCP-02.2：检测到 Refresh Token 重用后，该授权链中的最新 Refresh Token 也不能再续期。
+- AS-MCP-02.3：Token 原文不进入服务端数据库、应用日志、MCP 工具输出或工作区文件。
+
+### US-MCP-03 查询公开能力与注册
+
+作为尚未登录的平台访客，我希望通过 Agent 查询平台能力并取得注册链接，以便完成注册后登录。
+
+**主流程**：
+
+1. Agent 调用无需认证的 `get_ai_devops_capabilities`。
+2. MCP 返回不含用户数据和凭据的能力目录。
+3. 用户选择注册时，Agent 调用 `register_ai_devops` 并打开平台返回的安全注册链接。
+4. 注册完成后，用户通过标准 OAuth 浏览器流程登录。
+
+**验收标准**：
+
+- AS-MCP-03.1：未认证状态只能访问明确标识为公开的能力与注册入口。
+- AS-MCP-03.2：注册链接、登录页和授权页不得把密码回传给 MCP 工具。
+
+### US-MCP-04 Codex OAuth 不可用时完成本机登录
+
+作为本机开发用户，当 Codex 未显示远程 MCP 的 OAuth 授权入口时，我希望通过一次性浏览器链接登录，以便继续安全使用本机 AI DevOps 工具。
+
+**验收标准**：
+
+- AS-MCP-04.1：回退登录工具不接收用户名、邮箱、密码或 Token 参数，只返回本机一次性链接和过期时间。
+- AS-MCP-04.2：浏览器登录完成后，会话仅保存到当前 Windows 用户的凭据管理器；密码和 Token 不进入聊天、MCP 输出或日志。
+- AS-MCP-04.3：远程 OAuth 与本机回退配置必须互斥，防止同一工具名注册两次或混用会话。
 
 ## 功能需求
 
-- FR-MCP-001：MCP Server 必须为本地 stdio 服务，不监听公网端口。
-- FR-MCP-002：`login_ai_devops` 不得将登录标识或密码定义为工具参数；凭据必须通过一次性本机浏览器页面收集。
-- FR-MCP-003：Token 必须以当前 Windows 用户隔离的方式保存到 Windows 凭据管理器，并按平台地址与用户身份区分。
-- FR-MCP-004：Token 只能由 MCP Server 使用，不能返回给 Codex 或写入工作区文件。
-- FR-MCP-005：`get_current_ai_devops_user` 必须复用本地 Token 调用 `GET /api/v1/me`。
-- FR-MCP-006：`logout_ai_devops` 必须尝试调用后端登出，并始终清理本地凭据。
-- FR-MCP-007：后续平台工具必须在请求前检查登录状态，并在 401 后立即清理本地 Token。
-
-## 工具契约
-
-| 工具 | 输入 | 成功输出 | 失败输出 | 安全属性 |
-| --- | --- | --- | --- | --- |
-| `login_ai_devops` | 无；返回一次性本机登录链接 | 链接 ID、链接、过期时间 | 服务不可达 | 不收集密码，不返回 Token |
-| `get_ai_devops_login_status` | 无 | 登录状态、用户摘要、会话失效时间 | 链接未完成、过期、服务不可达 | 完成后仅 MCP 保存 Token |
-| `get_current_ai_devops_user` | 无 | 当前用户安全摘要 | 未登录、登录失效、服务不可达 | 只读 |
-| `logout_ai_devops` | 无 | 已登出 | 不应因会话已失效而失败 | 撤销当前后端会话并删除本地凭据 |
-
-## 注册扩展（修订 0.2）
-
-### US-MCP-01A 在 Codex 中取得安全注册链接
-
-作为尚未注册的 Codex 用户，我希望从 Codex 取得安全注册链接，以便在本机浏览器中设置密码后创建平台账号。
-
-**前置条件**：本地 AI DevOps 服务可访问，平台开放注册。
-
-**主流程**：
-
-1. 用户在 Codex 中请求注册 AI DevOps 平台账号。
-2. Codex 调用无敏感参数的 `register_ai_devops` 工具。
-3. MCP Server 调用 `POST /api/v1/auth/registration-links` 并返回一次性本机注册链接。
-4. 用户在注册链接页面直接向平台提交用户名、邮箱和密码。
-5. MCP 可调用 `get_ai_devops_registration_status` 查询完成状态；注册不创建会话、不保存 Token。
-
-**异常流程**：过期、已完成、未知或令牌不匹配的链接拒绝显示表单且不泄露状态；用户名或邮箱已存在、字段不合法或密码不符合策略时由注册页面返回安全失败信息；服务不可达时返回可重试的服务不可用信息。
-
-**验收标准**：
-
-- AS-MCP-01A.1：注册工具返回短时一次性本机注册链接，普通输入 Schema 不包含用户名、邮箱或密码字段。
-- AS-MCP-01A.2：密码只从注册链接页面发送到平台注册接口，MCP 不接收、保存或输出密码。
-- AS-MCP-01A.3：注册链接完成后，状态工具只返回用户 ID、用户名和邮箱；未完成链接不返回用户信息。
-- AS-MCP-01A.4：注册成功、失败或链接失效均不创建、覆盖或删除 Windows 凭据管理器中的平台会话 Token。
-
-### FR-MCP-008
-
-`register_ai_devops` 必须创建短时一次性本机注册链接；`get_ai_devops_registration_status` 必须以 MCP 进程内的注册链接持有者令牌查询完成状态。两个工具均不得自动登录、保存 Token 或收集密码。
-
-## 能力发现与自然语言引导（修订 0.5）
-
-### US-MCP-04 查询平台已支持能力
-
-作为 Codex 用户，我希望询问“AI DevOps 支持什么”或“我能做什么”时得到当前可调用的能力清单，以便不必记忆工具名称。
-
-**前置条件**：AI DevOps MCP Server 已连接；不要求登录。
-
-**主流程**：
-
-1. Codex 调用 `get_ai_devops_capabilities`。
-2. MCP Server 返回当前版本可用能力的稳定标识、名称、说明、对应工具、是否需要登录与示例表达。
-3. Codex 根据结果向用户说明能力，并在用户选择后调用对应工具。
-
-**异常流程**：能力查询不得访问后端、读取 Token 或泄露注册链接、登录链接与用户身份信息；MCP 不可用时由 Codex 报告工具不可用。
-
-**验收标准**：
-
-- AS-MCP-04.1：未登录用户可获取注册、登录、注册链接状态与登录状态能力。
-- AS-MCP-04.2：能力清单中包含当前用户查询和登出能力，并明确其需要登录。
-- AS-MCP-04.3：输出不包含密码、Token、注册链接、登录链接或用户信息。
-- AS-MCP-04.4：MCP 初始化说明声明 `ai-devops`、`ai devops`、`ai-d` 为服务别名，并将能力查询作为不明确请求的引导入口。
-
-### FR-MCP-009
-
-`get_ai_devops_capabilities` 必须为无输入、只读 MCP 工具；其能力目录由 MCP 当前实际注册的工具定义，不依赖后端服务，且返回中不得包含凭据或用户数据。
+- FR-MCP-001：正式 MCP Server 必须使用 Streamable HTTP；不得以 stdio JAR 作为正式部署或客户端凭据代理。
+- FR-MCP-002：需要登录的 MCP 工具必须验证 Bearer Access Token，并以 IAM 返回的认证主体进行授权。
+- FR-MCP-003：未认证仅可访问静态能力发现和注册引导等明确公开的工具。
+- FR-MCP-004：MCP 必须向兼容客户端公布 OAuth 保护资源元数据与授权服务器发现地址。
+- FR-MCP-005：本地验证必须使用最终 HTTP/OAuth 协议；生产环境必须 HTTPS，开发环境仅可将 HTTP 绑定至 `127.0.0.1`。
+- FR-MCP-006：MCP 不得保存用户 Access Token、Refresh Token、密码或 Windows 凭据；客户端负责保存自己取得的 Token。
+- FR-MCP-007：能力目录必须由实际注册的 MCP 工具生成，且公开目录不读取用户身份或 Token。
+- FR-MCP-008：本机回退仅允许连接 `127.0.0.1` 平台地址，使用 stdio MCP 与一次性浏览器登录链接；不得作为公网部署或多用户凭据代理。
+- FR-MCP-009：启动配置必须在远程 OAuth 与本机回退之间明确二选一；切换模式不迁移或复用另一模式的凭据。
 
 ## 成功标准
 
-- 用户无需在聊天消息中粘贴密码，也无需手动复制 Token。
-- 登录后，新增平台 MCP 工具可复用同一用户身份。
-- 后端 IAM 继续是唯一认证和授权来源；MCP 不复制或绕过 IAM 权限判断。
+- Codex 和其他兼容 Agent 能通过同一协议完成浏览器登录并调用受保护 MCP 工具。
+- 泄露单个短期 Access Token 的影响被限制在其有效期内；Refresh Token 重用可被检测并切断授权链。
+- IAM 始终是唯一认证与授权来源；MCP 不复制角色、权限项或租户授权规则。
+
+## 迁移说明
+
+远程 OAuth 是正式公网模式。本机 stdio + Windows 凭据管理器仅在 Codex 未提供 OAuth 授权入口时作为开发回退；两种连接不能在同一 Codex 配置中并行启用，切换时必须显式替换连接配置。

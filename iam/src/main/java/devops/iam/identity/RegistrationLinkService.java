@@ -45,7 +45,7 @@ public class RegistrationLinkService {
 
     @Transactional
     public LinkCreation create(String platformBaseUrl) {
-        URI baseUri = validateLoopbackUrl(platformBaseUrl);
+        URI baseUri = validatePlatformUrl(platformBaseUrl);
         Instant now = Instant.now(clock);
         Instant expiresAt = now.plus(LINK_TTL);
         String id = UUID.randomUUID().toString();
@@ -138,12 +138,14 @@ public class RegistrationLinkService {
         return MessageDigest.isEqual(left.getBytes(StandardCharsets.US_ASCII), right.getBytes(StandardCharsets.US_ASCII));
     }
 
-    private URI validateLoopbackUrl(String platformBaseUrl) {
+    private URI validatePlatformUrl(String platformBaseUrl) {
         URI uri = URI.create(platformBaseUrl);
         String host = uri.getHost();
         boolean loopback = LOCALHOST.equalsIgnoreCase(host) || LOOPBACK_V4.equals(host) || LOOPBACK_V6.equals(host);
-        if (!loopback || (!"http".equalsIgnoreCase(uri.getScheme()) && !"https".equalsIgnoreCase(uri.getScheme()))) {
-            throw new IllegalArgumentException("注册链接只能指向本机 AI DevOps 服务。");
+        boolean https = "https".equalsIgnoreCase(uri.getScheme()) && host != null;
+        boolean localHttp = loopback && "http".equalsIgnoreCase(uri.getScheme());
+        if (!https && !localHttp) {
+            throw new IllegalArgumentException("注册链接必须使用 HTTPS，开发环境仅允许本机 HTTP。");
         }
         return uri;
     }

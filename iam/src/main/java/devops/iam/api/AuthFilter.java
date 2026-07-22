@@ -20,6 +20,13 @@ class AuthFilter extends OncePerRequestFilter {
     }
 
     @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        String path = request.getRequestURI();
+        // OAuth Access Token 与既有 REST 会话 Token 的生命周期不同，必须由各自协议端点验证。
+        return path.startsWith("/oauth/") || path.startsWith("/.well-known/") || "/mcp".equals(path);
+    }
+
+    @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {
         String header = request.getHeader("Authorization");
