@@ -16,7 +16,7 @@
 | T-MCP-08 | 增加一次性安全注册链接 MCP 工具、REST 适配与测试 | US-MCP-01A、FR-MCP-008 | 单元测试、HTTP 契约测试、Codex 人工验收 | 已完成（待 Codex 实机验收） |
 | T-MCP-09 | 将登录改为一次性本机浏览器链接并安全交接会话令牌 | US-MCP-01、FR-MCP-002 | 单元测试、HTTP 契约测试、Codex 人工验收 | 已完成（待 Codex 实机验收） |
 
-| T-MCP-09 | 增加能力发现工具、Server instructions 与仓库级 Skill | US-MCP-04、FR-MCP-009、FR-MCP-010 | 单元测试、Skill 校验、Codex 人工验收 | 已完成（待 Codex 实机验收） |
+| T-MCP-10 | 增加能力发现工具与 Server instructions | US-MCP-04、FR-MCP-009 | 单元测试、Codex 人工验收 | 已完成（待 Codex 实机验收） |
 
 ## 验收顺序
 

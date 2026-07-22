@@ -98,12 +98,11 @@ enabled_tools = ["get_ai_devops_capabilities", "register_ai_devops", "get_ai_dev
 
 启动脚本负责调用 JAR，并设置 `--enable-native-access=ALL-UNNAMED`。脚本和配置中不得出现平台账号、密码或 Token。
 
-## 能力发现与 Skill 设计
+## 能力发现与工具引导设计
 
 - `McpToolHandlers` 维护唯一的能力目录，并同时用于注册 `get_ai_devops_capabilities` 工具和生成其返回值，避免文档与实际注册工具漂移。
 - 能力发现工具仅返回静态元数据，不依赖 `McpIdentityService`、平台 REST API 或 Windows 凭据管理器。
 - MCP 初始化响应通过 `instructions` 声明：`ai-devops`、`ai devops`、`ai-d` 均是本服务别名；不明确需求或能力查询时优先调用能力发现工具。
-- 仓库级 Skill 存放在 `.agents/skills/ai-devops-assistant`，随仓库分发；Skill 负责将自然语言路由到 MCP 工具，不重复维护动态能力列表，也不处理任何密码或 Token。
 
 ## 安全设计
 
