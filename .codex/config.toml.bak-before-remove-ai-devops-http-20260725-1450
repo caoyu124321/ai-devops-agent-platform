@@ -1,0 +1,5 @@
+# 使用本机 Streamable HTTP MCP，并由 Codex 处理 OAuth 浏览器授权。
+# 此配置不启动 stdio 回退，也不依赖 Windows 凭据管理器。
+[mcp_servers.ai_devops]
+url = "http://127.0.0.1:8080/mcp"
+auth = "oauth"

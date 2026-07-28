@@ -24,6 +24,7 @@
 
     <modules>
         <module>iam</module>
+        <module>project-management</module>
         <module>application</module>
         <module>mcp</module>
     </modules>

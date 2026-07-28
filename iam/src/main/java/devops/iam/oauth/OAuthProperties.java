@@ -7,6 +7,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 /** OAuth 外部地址与密钥只允许经受控配置注入，不能由请求头或客户端输入推导。 */
 @ConfigurationProperties(prefix = "app.oauth")
 public class OAuthProperties {
+    private static final String MCP_RESOURCE_PATH = "/mcp";
+    private static final String MCP_RESOURCE_METADATA_PATH = "/.well-known/oauth-protected-resource/mcp";
     private String issuer = "http://127.0.0.1:8080";
     private boolean allowLoopbackHttp = true;
     private boolean autoActivateLoopbackClients = true;
@@ -47,4 +49,11 @@ public class OAuthProperties {
     public String getSigningPublicKey() { return signingPublicKey; }
 
     public void setSigningPublicKey(String signingPublicKey) { this.signingPublicKey = signingPublicKey; }
+
+    /**
+     * OAuth resource 必须与受保护资源元数据中公布的 URL 完全一致，避免客户端、授权服务器和 MCP 服务对受众产生歧义。
+     */
+    public String getMcpResource() { return issuer + MCP_RESOURCE_PATH; }
+
+    public String getMcpProtectedResourceMetadataUrl() { return issuer + MCP_RESOURCE_METADATA_PATH; }
 }

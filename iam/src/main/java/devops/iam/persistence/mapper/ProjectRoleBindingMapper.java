@@ -30,5 +30,8 @@ public interface ProjectRoleBindingMapper {
     @Delete("delete from iam_project_role_bindings where member_id=#{memberId}")
     int deleteByMember(@Param("memberId") String memberId);
 
+    @Delete("delete from iam_project_role_bindings where tenant_id=#{tenantId} and project_id=#{projectId}")
+    int deleteByProject(@Param("tenantId") String tenantId, @Param("projectId") String projectId);
+
     record ProjectRoleBindingRow(String projectId, String roleCode) { }
 }

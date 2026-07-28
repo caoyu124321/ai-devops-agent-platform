@@ -13,6 +13,11 @@ spring:
 app:
   iam:
     schema-validation: ${APP_IAM_SCHEMA_VALIDATE:false}
+    # 仅本地默认 H2 库自动创建开发所需 IAM 表；外部 MySQL 始终由正式迁移管理。
+    local-h2-schema-init: ${APP_IAM_LOCAL_H2_SCHEMA_INIT:true}
+  project-management:
+    # 本地 H2 自动初始化项目管理表；外部 MySQL 只能通过版本化迁移创建表。
+    local-h2-schema-init: ${APP_PROJECT_MANAGEMENT_LOCAL_H2_SCHEMA_INIT:true}
   oauth:
     # 本地使用终版 HTTP 协议；生产环境必须通过环境变量配置 HTTPS 外部地址。
     issuer: ${APP_OAUTH_ISSUER:http://127.0.0.1:8080}

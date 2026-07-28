@@ -38,5 +38,9 @@ public class ProjectRoleBindingDao {
         mapper.deleteByMember(memberId);
     }
 
+    public void deleteByProject(String tenantId, String projectId) {
+        mapper.deleteByProject(tenantId, projectId);
+    }
+
     public record ProjectRoleRow(String projectId, String roleCode) { }
 }

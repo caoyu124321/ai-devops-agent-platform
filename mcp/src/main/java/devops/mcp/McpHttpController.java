@@ -79,13 +79,19 @@ class McpHttpController {
 
     private Map<String, Object> callTool(String name, String accessToken) {
         if ("get_ai_devops_capabilities".equals(name)) {
-            return textResult("当前支持：注册、OAuth 浏览器登录、查询当前用户、登出。需要登录的业务工具会自动使用 OAuth 身份。");
+            return textResult("当前支持：注册、OAuth 浏览器登录、查询登录状态、查询当前用户、登出。需要登录的业务工具会自动使用 OAuth 身份。");
         }
         if ("register_ai_devops".equals(name)) {
             RegistrationLinkService.LinkCreation link = registrationLinkService.create(properties.getIssuer());
             return textResult("注册链接：" + link.url() + "，过期时间：" + link.expiresAt());
         }
         OAuthService.OAuthPrincipal principal = oauthService.authenticateAccessToken(accessToken);
+        if ("login_ai_devops".equals(name)) {
+            return loginStatusResult(principal);
+        }
+        if ("get_ai_devops_login_status".equals(name)) {
+            return loginStatusResult(principal);
+        }
         if ("get_current_ai_devops_user".equals(name)) {
             return textResult("当前用户：" + principal.username() + "（" + principal.email() + "）");
         }
@@ -99,12 +105,14 @@ class McpHttpController {
     private List<Map<String, Object>> tools() {
         return List.of(tool("get_ai_devops_capabilities", "查询当前 AI DevOps MCP 能力。"),
                 tool("register_ai_devops", "取得安全注册链接；密码只在浏览器页面输入。"),
+                tool("login_ai_devops", "登录 AI DevOps；未认证时触发浏览器 OAuth 授权。"),
+                tool("get_ai_devops_login_status", "查询当前 AI DevOps OAuth 登录状态。"),
                 tool("get_current_ai_devops_user", "查询当前 OAuth 登录用户。"),
                 tool("logout_ai_devops", "撤销当前 Agent 的 OAuth 授权链。"));
     }
 
     private String protectedResourceMetadataUrl() {
-        return properties.getIssuer() + "/.well-known/oauth-protected-resource/mcp";
+        return properties.getMcpProtectedResourceMetadataUrl();
     }
 
     private Map<String, Object> tool(String name, String description) {
@@ -112,6 +120,12 @@ class McpHttpController {
     }
 
     private Map<String, Object> textResult(String text) { return Map.of("content", List.of(Map.of("type", "text", "text", text))); }
+
+    /** 登录状态只返回 OAuth 主体摘要和过期时间，防止工具输出泄露访问令牌。 */
+    private Map<String, Object> loginStatusResult(OAuthService.OAuthPrincipal principal) {
+        return textResult("登录状态：LOGGED_IN，当前用户：" + principal.username() + "（" + principal.email()
+                + "），会话失效时间：" + principal.expiresAt());
+    }
 
     @SuppressWarnings("unchecked")
     private Map<String, Object> mapValue(Object value) { return value instanceof Map<?, ?> map ? (Map<String, Object>) map : Map.of(); }

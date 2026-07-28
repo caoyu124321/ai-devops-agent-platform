@@ -63,7 +63,7 @@ public class OAuthService {
     public AuthorizationRequest validateAuthorization(AuthorizationRequest request) {
         if (request == null || !"code".equals(request.responseType()) || blank(request.clientId()) || blank(request.redirectUri())
                 || blank(request.codeChallenge()) || !OAuthConstants.S256.equals(request.codeChallengeMethod())
-                || !OAuthConstants.MCP_AUDIENCE.equals(request.resource())) {
+                || !properties.getMcpResource().equals(request.resource())) {
             throw bad("INVALID_AUTHORIZATION_REQUEST", "授权请求不符合要求");
         }
         OAuthDao.ClientRow client = requireActiveClient(request.clientId());
@@ -76,7 +76,7 @@ public class OAuthService {
             throw bad("INVALID_SCOPE", "授权请求不符合要求");
         }
         return new AuthorizationRequest("code", client.id(), redirectUri, canonicalScopes(scopes), request.state(),
-                request.codeChallenge(), OAuthConstants.S256, OAuthConstants.MCP_AUDIENCE);
+                request.codeChallenge(), OAuthConstants.S256, properties.getMcpResource());
     }
 
     @Transactional
@@ -169,7 +169,7 @@ public class OAuthService {
         OAuthDao.AccessPrincipalRow row = dao.findAccessPrincipal(codec.hash(rawToken), Instant.now())
                 .orElseThrow(() -> bad("AUTHENTICATION_REQUIRED", "需要登录"));
         Set<String> scopes = splitScopes(row.scopes());
-        if (!OAuthConstants.MCP_AUDIENCE.equals(row.audience()) || !scopes.contains(OAuthConstants.SCOPE_MCP_TOOLS)) {
+        if (!properties.getMcpResource().equals(row.audience()) || !scopes.contains(OAuthConstants.SCOPE_MCP_TOOLS)) {
             throw bad("AUTHENTICATION_REQUIRED", "需要登录");
         }
         return new OAuthPrincipal(row.userId(), row.grantId(), row.clientId(), row.audience(), scopes, row.expiresAt(), row.username(), row.email());

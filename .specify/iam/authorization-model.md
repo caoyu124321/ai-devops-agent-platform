@@ -23,7 +23,7 @@
 | 租户 | `TENANT_ADMIN` | 所属租户内任意抽象资源、动作和下级范围；包括生产环境部署 |
 | 租户 | `MEMBER` | 仅具有成员身份，默认没有租户级业务权限 |
 | 项目 | `PROJECT_ADMIN` | 已绑定项目及其环境下的任意资源和动作；包括 `PROD` 部署 |
-| 项目 | `DEVELOPER` | 已绑定项目的 `repository.use`，以及 `TEST`、`STAGING` 环境下的全部动作；`PROD` 始终拒绝 |
+| 项目 | `DEVELOPER` | 已绑定项目的 `repository.use`，以及 `DEV`、`TEST`、`STAGING` 环境下的全部动作；`PROD` 始终拒绝 |
 
 - `iam_tenant_members.role_code` 仅允许 `TENANT_ADMIN`、`MEMBER`。
 - `iam_project_role_bindings` 保存 `PROJECT_ADMIN`、`DEVELOPER` 和抽象 `projectId`；同一成员可在同一租户的不同项目拥有不同角色。

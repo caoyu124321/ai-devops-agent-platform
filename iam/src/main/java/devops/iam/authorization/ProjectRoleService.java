@@ -60,6 +60,14 @@ public class ProjectRoleService {
                 null, Instant.now()));
     }
 
+    /** 项目删除前清理全部抽象项目角色，避免 IAM 保留已不存在项目的授权记录。 */
+    @Transactional
+    public void unbindProject(String actorId, String tenantId, String projectId) {
+        tenantService.requireTenantAdmin(actorId, tenantId);
+        validateProjectId(projectId);
+        bindingDao.deleteByProject(tenantId, projectId);
+    }
+
     private void validateProjectId(String projectId) {
         if (projectId == null || projectId.isBlank() || projectId.length() > 64) {
             throw new IamException("PROJECT_ID_INVALID", HttpStatus.BAD_REQUEST, "项目标识不合法");

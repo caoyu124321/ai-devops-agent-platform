@@ -1,6 +1,6 @@
 # IAM OAuth/OIDC 提供方规格
 
-**修订版本**：1.3
+**修订版本**：1.4
 **状态**：需求与技术设计已确认，待实施
 **关联规格**：`../codex-mcp/spec.md`、`../iam/user-stories.md`
 
@@ -52,6 +52,7 @@
 - FR-OAUTH-014：客户端名称、发布方字段和回调地址以外的普通注册元数据均不得作为品牌信任依据；只有由预配置可信签发方签名且验证通过的 `software_statement` 才能识别 Agent 品牌。
 - FR-OAUTH-015：未知公共客户端默认状态必须可通过后端配置定义，默认 `ACTIVE`，以支持兼容 OAuth + PKCE 的 Agent 自助接入；配置可按精确 `client_id` 覆盖为 `PENDING`、`ACTIVE` 或 `SUSPENDED`，配置变更在服务重启后生效。无论默认策略为何，动态注册均必须受回调地址校验、PKCE、用户登录同意和每 IP 每小时 10 次注册限流约束。
 - FR-OAUTH-016：可信品牌的签名软件声明通过验证且品牌配置已启用时，客户端自动为 `ACTIVE`；品牌被禁用时，客户端不得开始或继续 OAuth 授权。
+- FR-OAUTH-017：MCP 的 OAuth `resource`、Access Token 受众和受保护资源元数据中的 `resource` 必须统一为 `${issuer}/mcp`。受保护 MCP 工具在缺少、无效、过期或受众不匹配的 Token 时，必须返回 HTTP `401` 与指向 `${issuer}/.well-known/oauth-protected-resource/mcp` 的 `WWW-Authenticate` 挑战，供 Agent 发起浏览器 OAuth 登录。
 
 ## 用户故事
 
@@ -77,7 +78,7 @@
 
 作为开发者，我希望在 `127.0.0.1` 使用生产同一协议验证 OAuth 与 MCP，以便不再依赖 Windows 凭据管理器或 stdio JAR。
 
-**验收标准**：本地 Agent 通过 HTTP MCP URL 完成浏览器 OAuth 登录；生产配置切换 HTTPS 域名后不改变协议和工具行为。
+**验收标准**：本地 Agent 通过 HTTP MCP URL 完成浏览器 OAuth 登录；`resource`、Token 受众和受保护资源元数据均为同一 MCP URL；生产配置切换 HTTPS 域名后不改变协议和工具行为。
 
 ### US-OAUTH-05 按品牌与实例控制客户端接入
 

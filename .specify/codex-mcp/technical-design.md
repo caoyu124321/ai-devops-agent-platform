@@ -29,7 +29,7 @@ Agent ── OAuth Bearer Token ──> /mcp
 ## 请求处理规则
 
 1. 仅公开工具允许匿名访问；其名单由实际注册工具生成。
-2. 受保护工具先检查 OAuth Access Token 的有效性、受众 `ai-devops-mcp` 和 `mcp.tools` Scope。
+2. 受保护工具先检查 OAuth Access Token 的有效性、受众 `${issuer}/mcp` 和 `mcp.tools` Scope；未认证时返回 HTTP `401` 与 `resource_metadata` 认证挑战，由 Codex 发起浏览器 OAuth 登录。
 3. 工具需要访问具体资源时，必须调用 IAM 授权门面；认证成功不代表具有租户、项目或环境权限。
 4. 未认证、无效、过期和受众不匹配使用同一未认证结果，避免 Token 状态探测。
 5. 工具输出、诊断日志和错误不得包含 Authorization 头、Token、授权码、密码或 PKCE 参数。

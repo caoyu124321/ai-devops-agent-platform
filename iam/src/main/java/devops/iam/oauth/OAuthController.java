@@ -66,7 +66,7 @@ class OAuthController {
 
     @GetMapping("/.well-known/oauth-protected-resource/mcp")
     Map<String, Object> protectedResourceMetadata() {
-        return Map.of("resource", properties.getIssuer() + "/mcp", "authorization_servers", List.of(properties.getIssuer()),
+        return Map.of("resource", properties.getMcpResource(), "authorization_servers", List.of(properties.getIssuer()),
                 "scopes_supported", List.of(OAuthConstants.SCOPE_MCP_TOOLS));
     }
 

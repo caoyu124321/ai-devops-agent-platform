@@ -1,6 +1,7 @@
 package devops.iam.api;
 
 import devops.iam.identity.IdentityService;
+import devops.iam.oauth.OAuthService;
 import jakarta.servlet.FilterChain;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpServletRequest;
@@ -18,7 +19,10 @@ class AuthFilterTest {
         IdentityService identityService = mock(IdentityService.class);
         when(identityService.authenticate("invalid-token"))
                 .thenThrow(new IamException("AUTHENTICATION_REQUIRED", org.springframework.http.HttpStatus.UNAUTHORIZED, "需要登录"));
-        AuthFilter filter = new AuthFilter(identityService);
+        OAuthService oauthService = mock(OAuthService.class);
+        when(oauthService.authenticateAccessToken("invalid-token"))
+                .thenThrow(new IamException("AUTHENTICATION_REQUIRED", org.springframework.http.HttpStatus.UNAUTHORIZED, "login required"));
+        AuthFilter filter = new AuthFilter(identityService, oauthService);
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.addHeader("Authorization", "Bearer invalid-token");
         MockHttpServletResponse response = new MockHttpServletResponse();

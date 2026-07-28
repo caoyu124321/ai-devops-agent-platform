@@ -26,7 +26,7 @@
 ### `GET /oauth/authorize`
 
 **调用方**：用户浏览器。  
-**输入参数**：`response_type=code`、`client_id`、`redirect_uri`、`scope`、`state`、`code_challenge`、`code_challenge_method=S256`、`resource=ai-devops-mcp`。  
+**输入参数**：`response_type=code`、`client_id`、`redirect_uri`、`scope`、`state`、`code_challenge`、`code_challenge_method=S256`、`resource=${issuer}/mcp`。
 **成功结果**：经用户登录与同意后，302 到严格匹配的 `redirect_uri?code=<一次性授权码>&state=<原值>`。  
 **用户拒绝**：302 到严格匹配的回调地址，携带标准拒绝错误和原 `state`，不含用户信息。  
 **主要拒绝**：客户端未启用、回调地址不匹配、缺失/不支持 PKCE、无效 Scope 或受众、浏览器会话失效。
@@ -70,6 +70,12 @@
 Authorization: Bearer <access_token>
 ```
 
+缺少、无效、过期或受众不匹配时返回 HTTP `401`，并携带：
+
+```http
+WWW-Authenticate: Bearer resource_metadata="${issuer}/.well-known/oauth-protected-resource/mcp"
+```
+
 MCP 认证适配器向工具层提供以下内部只读契约：
 
 ```text
@@ -77,7 +83,7 @@ AuthenticatedSubject
   userId
   oauthGrantId
   clientId
-  audience = ai-devops-mcp
+  audience = ${issuer}/mcp
   scopes
   expiresAt
 ```

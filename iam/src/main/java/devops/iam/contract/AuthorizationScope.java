@@ -9,5 +9,5 @@ public record AuthorizationScope(
         EnvironmentLevel environmentLevel) {
     public enum ScopeType { PLATFORM, TENANT, PROJECT, ENVIRONMENT }
 
-    public enum EnvironmentLevel { TEST, STAGING, PROD }
+    public enum EnvironmentLevel { DEV, TEST, STAGING, PROD }
 }

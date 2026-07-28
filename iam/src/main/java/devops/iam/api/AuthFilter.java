@@ -1,6 +1,7 @@
 package devops.iam.api;
 
 import devops.iam.identity.IdentityService;
+import devops.iam.oauth.OAuthService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -14,9 +15,11 @@ import org.springframework.web.filter.OncePerRequestFilter;
 @Component
 class AuthFilter extends OncePerRequestFilter {
     private final IdentityService identityService;
+    private final OAuthService oauthService;
 
-    AuthFilter(IdentityService identityService) {
+    AuthFilter(IdentityService identityService, OAuthService oauthService) {
         this.identityService = identityService;
+        this.oauthService = oauthService;
     }
 
     @Override
@@ -34,12 +37,17 @@ class AuthFilter extends OncePerRequestFilter {
             try {
                 request.setAttribute("iamPrincipal", identityService.authenticate(header.substring(7)));
             } catch (IamException exception) {
-                response.setStatus(exception.status().value());
+                try {
+                    // 会话 Token 与 OAuth Access Token 均可作为平台 API 身份，后续业务只读取统一主体属性。
+                    request.setAttribute("iamPrincipal", oauthService.authenticateAccessToken(header.substring(7)));
+                } catch (IamException oauthException) {
+                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                 response.setContentType("application/json");
                 response.getWriter().write("{\"code\":\"" + exception.code()
                         + "\",\"message\":\"需要登录\",\"traceId\":\"" + UUID.randomUUID()
                         + "\",\"details\":{}}");
                 return;
+                }
             }
         }
         chain.doFilter(request, response);

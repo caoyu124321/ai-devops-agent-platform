@@ -36,7 +36,7 @@ application（唯一 Spring Boot 进程）
 | `POST /oauth/register` | 动态公共客户端注册 | 无，限流 |
 | `POST /mcp` | Streamable HTTP MCP | 公开工具或 Bearer Access Token |
 
-Access Token 的 `audience` 固定为 `ai-devops-mcp`。后续 REST 资源如需复用 OAuth，必须登记独立受众，不能接受面向 MCP 的 Token。
+Access Token 的 `audience` 固定为配置的 `${issuer}/mcp`，并与 MCP 受保护资源元数据中的 `resource` 一致。后续 REST 资源如需复用 OAuth，必须登记独立受众，不能接受面向 MCP 的 Token。
 
 ## 3. 授权码与浏览器会话
 

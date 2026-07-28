@@ -5,7 +5,6 @@ import java.util.Set;
 
 /** OAuth 协议中重复使用的固定值集中管理，避免生命周期规则散落在业务代码中。 */
 final class OAuthConstants {
-    static final String MCP_AUDIENCE = "ai-devops-mcp";
     static final String TOKEN_TYPE_BEARER = "Bearer";
     static final String S256 = "S256";
     static final String GRANT_AUTHORIZATION_CODE = "authorization_code";

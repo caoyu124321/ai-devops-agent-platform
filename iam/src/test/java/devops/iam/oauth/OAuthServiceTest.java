@@ -20,6 +20,7 @@ import org.mockito.Mockito;
 
 /** 覆盖 OAuth 公共客户端、PKCE 与刷新令牌重用的关键安全边界。 */
 class OAuthServiceTest {
+    private static final String MCP_RESOURCE = "http://127.0.0.1:8080/mcp";
     private OAuthDao dao;
     private OAuthService service;
 
@@ -61,7 +62,7 @@ class OAuthServiceTest {
         OAuthService configuredService = new OAuthService(dao, Mockito.mock(IdentityService.class), new OAuthTokenCodec(), new OidcTokenSigner(properties), properties);
 
         OAuthService.AuthorizationRequest request = new OAuthService.AuthorizationRequest("code", "approved-client", "https://agent.example/callback",
-                "openid mcp.tools", "state", "challenge", "S256", "ai-devops-mcp");
+                "openid mcp.tools", "state", "challenge", "S256", MCP_RESOURCE);
 
         assertEquals("approved-client", configuredService.validateAuthorization(request).clientId());
     }
@@ -69,7 +70,7 @@ class OAuthServiceTest {
     @Test
     void authorizationShouldRejectPlainPkce() {
         OAuthService.AuthorizationRequest request = new OAuthService.AuthorizationRequest("code", "client", "http://127.0.0.1:3333/callback",
-                "openid mcp.tools", "state", "challenge", "plain", "ai-devops-mcp");
+                "openid mcp.tools", "state", "challenge", "plain", MCP_RESOURCE);
 
         assertThrows(IamException.class, () -> service.validateAuthorization(request));
         verify(dao, never()).findClient(any());
@@ -79,7 +80,7 @@ class OAuthServiceTest {
     void reusedRefreshTokenShouldRevokeEntireGrant() {
         Instant now = Instant.now();
         OAuthDao.RefreshTokenRow rotated = new OAuthDao.RefreshTokenRow("refresh", "hash", "grant", null, "ROTATED", now, now);
-        OAuthDao.GrantRow grant = new OAuthDao.GrantRow("grant", "user", "client", "ai-devops-mcp", "mcp.tools offline_access", now.plusSeconds(3600),
+        OAuthDao.GrantRow grant = new OAuthDao.GrantRow("grant", "user", "client", MCP_RESOURCE, "mcp.tools offline_access", now.plusSeconds(3600),
                 now, null, null, now);
         when(dao.findRefreshTokenForUpdate(any())).thenReturn(Optional.of(rotated));
         when(dao.findGrantForUpdate("grant")).thenReturn(Optional.of(grant));

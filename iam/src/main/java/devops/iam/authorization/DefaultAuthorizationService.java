@@ -102,7 +102,8 @@ public class DefaultAuthorizationService implements AuthorizationService {
         }
         if (!"DEVELOPER".equals(role)) return false;
         if ("repository.use".equals(request.actionCode())) return true;
-        return request.scope().environmentLevel() == devops.iam.contract.AuthorizationScope.EnvironmentLevel.TEST
+        return request.scope().environmentLevel() == devops.iam.contract.AuthorizationScope.EnvironmentLevel.DEV
+                || request.scope().environmentLevel() == devops.iam.contract.AuthorizationScope.EnvironmentLevel.TEST
                 || request.scope().environmentLevel() == devops.iam.contract.AuthorizationScope.EnvironmentLevel.STAGING;
     }
 }
